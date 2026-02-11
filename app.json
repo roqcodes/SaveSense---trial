@@ -20,14 +20,20 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.savesense"
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "savesense",
     "plugins": [
-      "./plugins/withShareMenu.js"
+      [
+        "expo-share-intent",
+        {
+          "scheme": "savesense",
+          "debug": true
+        }
+      ]
     ]
   }
 }
