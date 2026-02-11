@@ -3,8 +3,12 @@ const { withAndroidManifest, withMainActivity } = require('@expo/config-plugins'
 const withShareMenu = (config) => {
     config = withAndroidManifest(config, async (config) => {
         const androidManifest = config.modResults;
-        const mainActivity = androidManifest.manifest.application[0].activity.find(
-            (activity) => activity['@android:name'] === '.MainActivity'
+        const application = androidManifest.manifest.application[0];
+
+        // Find MainActivity
+        // In xml2js, attributes are stored in the '$' property.
+        let mainActivity = application.activity.find(
+            (activity) => activity.$['android:name'] === '.MainActivity'
         );
 
         if (mainActivity) {
@@ -40,6 +44,8 @@ const withShareMenu = (config) => {
                     },
                 ],
             });
+        } else {
+            console.warn("Could not find .MainActivity in AndroidManifest.xml");
         }
 
         return config;
