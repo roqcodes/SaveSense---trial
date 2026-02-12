@@ -16,42 +16,79 @@ const LoginScreen = () => {
     const handleGoogleLogin = async () => {
         setLoading(true);
         try {
-            // Create a deep link for redirect
-            const redirectUrl = Linking.createURL('/auth/callback');
+            // Create a deep link for redirect - remove leading slash to avoid ///
+            const redirectUrl = Linking.createURL('auth/callback');
             console.log('Redirect URL:', redirectUrl);
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: redirectUrl,
-                    skipBrowserRedirect: true, // We will handle the URL opening
+                    skipBrowserRedirect: true,
                 },
             });
 
             if (error) throw error;
 
             if (data?.url) {
+                // Setup a listener for deep links as a fallback/primary way to catch the result
+                // because sometimes openAuthSessionAsync doesn't return the url on Android
+                let authUrl = '';
+
+                const handleUrl = (event: { url: string }) => {
+                    console.log('Deep link received:', event.url);
+                    authUrl = event.url;
+                };
+
+                const subscription = Linking.addEventListener('url', handleUrl);
+
                 const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
-                if (result.type === 'success' && result.url) {
-                    // Parse the URL parameters to extract the access_token and refresh_token
-                    // Supabase implicitly handles sessions if the URL structure matches expected OAuth callback
-                    // But with skipBrowserRedirect: true, we might need to manually set session or let Supabase's auto-detect logic handle it?
-                    // Actually, manually extracting tokens from hash is safer.
-                    const { queryParams } = Linking.parse(result.url);
+                // Cleanup listener
+                subscription.remove();
 
-                    if (queryParams?.access_token && queryParams?.refresh_token) {
+                // Determine which URL to use
+                const finalUrl = (result.type === 'success' && result.url) ? result.url : authUrl;
+
+                if (finalUrl) {
+                    console.log('Processing Auth URL:', finalUrl);
+
+                    // Helper to extract params from URL (query or hash)
+                    const extractParams = (url: string) => {
+                        const params: Record<string, string> = {};
+                        // Check for hash parameters first (common in implicit flow)
+                        const hashPart = url.split('#')[1];
+                        if (hashPart) {
+                            hashPart.split('&').forEach(part => {
+                                const [key, value] = part.split('=');
+                                if (key && value) params[key] = decodeURIComponent(value);
+                            });
+                        }
+
+                        // Also check query parameters as fallback
+                        const queryPart = url.split('?')[1]?.split('#')[0];
+                        if (queryPart) {
+                            queryPart.split('&').forEach(part => {
+                                const [key, value] = part.split('=');
+                                if (key && value) params[key] = decodeURIComponent(value);
+                            });
+                        }
+                        return params;
+                    };
+
+                    const params = extractParams(finalUrl);
+
+                    if (params.access_token && params.refresh_token) {
                         const { error: sessionError } = await supabase.auth.setSession({
-                            access_token: queryParams.access_token as string,
-                            refresh_token: queryParams.refresh_token as string,
+                            access_token: params.access_token,
+                            refresh_token: params.refresh_token,
                         });
                         if (sessionError) throw sessionError;
+                    } else {
+                        console.log('No tokens found in URL:', finalUrl);
                     }
-                    // Note: If Supabase returns the tokens in the hash part (implicit flow), Linking.parse might put them in different properties.
-                    // Usually OAuth2 PKCE returns code, but implicit flow returns tokens directly.
-                    // Let's rely on supabase-js handling via deep linking listener in App.tsx if we use standard flow.
-                    // But here, we are manually handling the browser result.
-                    // Let's try the simpler approach first: standard flow.
+                } else {
+                    console.log('Auth Session finished but no URL captured. Result type:', result.type);
                 }
             }
         } catch (error) {

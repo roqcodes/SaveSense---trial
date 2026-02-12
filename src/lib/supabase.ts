@@ -18,8 +18,8 @@ const ExpoSecureStoreAdapter = {
 
 // Start using your Supabase credentials here.
 // You need to replace these with your own project credentials.
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabaseUrl = 'https://dqxphtzzyikwfkoqqyaa.supabase.co';
+const supabaseAnonKey = 'sb_publishable_zJcKBe60OS-VByG5ECgWTg_21pn6h2-';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {

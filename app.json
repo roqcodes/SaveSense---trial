@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -20,6 +15,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.maketon.savesense",
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -27,15 +23,9 @@
     },
     "scheme": "savesense",
     "plugins": [
-      [
-        "expo-share-intent",
-        {
-          "scheme": "savesense",
-          "debug": true
-        }
-      ],
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withNativeBackgroundShare"
     ]
   }
 }

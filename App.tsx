@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
+import * as WebBrowser from 'expo-web-browser';
 
 import HomeScreen from './src/screens/HomeScreen';
 import AnalyzeScreen from './src/screens/AnalyzeScreen';
@@ -60,6 +61,48 @@ function AuthNavigator() {
   );
 }
 
+import { ShareIntentProvider, useShareIntent } from 'expo-share-intent';
+import { ShareOverlay } from './src/components/ShareOverlay';
+
+function MainContent({ session, loading }: { session: Session | null, loading: boolean }) {
+  const { hasShareIntent, resetShareIntent } = useShareIntent();
+  const [showShareOverlay, setShowShareOverlay] = React.useState(false);
+
+  React.useEffect(() => {
+    if (hasShareIntent && session) {
+      setShowShareOverlay(true);
+    }
+  }, [hasShareIntent, !!session]);
+
+  const handleShareComplete = () => {
+    setShowShareOverlay(false);
+    resetShareIntent();
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // If we are in share mode, ONLY render the overlay to keep it lightweight
+  if (showShareOverlay) {
+    return (
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <ShareOverlay onComplete={handleShareComplete} />
+      </View>
+    );
+  }
+
+  return (
+    <NavigationContainer>
+      {session && session.user ? <TabNavigator /> : <AuthNavigator />}
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   const [session, setSession] = React.useState<Session | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -72,25 +115,18 @@ export default function App() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('Auth State Change:', _event, session?.user?.email);
       setSession(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
-    <NavigationContainer>
-      {session && session.user ? <TabNavigator /> : <AuthNavigator />}
-    </NavigationContainer>
+    <ShareIntentProvider>
+      <MainContent session={session} loading={loading} />
+    </ShareIntentProvider>
   );
 }
 
